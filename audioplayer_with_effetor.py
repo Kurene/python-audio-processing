@@ -105,34 +105,34 @@ class Player(threading.Thread):
         sf.write(self.savefilepath, self.sig_save, self.sr)
 #=============================================================================
 
-# ここから実装
-# 単チャネルの信号を処理する関数を実装
-"""
-@jit
-def effector(blocksize, x, y, x_buf, y_buf):
-    pass
-"""
 
-@jit
-def delay(sr, blocksize, bufsize, x, y, x_buf, y_buf):
-    fo    = 10
-    tau   = sr // fo
-    alpha = 0.6
-    for k in range(blocksize):
-        if k >= tau:
-            y[k] = x[k] - alpha * y[k - tau]
-        else:
-            y[k] = x[k] - alpha * y_buf[bufsize-1-tau+ k]
+if __name__ == "__main__":
+    # ここから実装
+    # 単チャネルの信号を処理する関数を実装
+    """
+    @jit
+    def effector(blocksize, x, y, x_buf, y_buf):
+        pass
+    """
 
-
-filepath = "./audio.wav"
-player = Player(filepath, effector=delay)
-player.start()
-# player.stop()
+    @jit
+    def delay(sr, blocksize, bufsize, x, y, x_buf, y_buf):
+        fo    = 10
+        tau   = sr // fo
+        alpha = 0.6
+        for k in range(blocksize):
+            if k >= tau:
+                y[k] = x[k] - alpha * y[k - tau]
+            else:
+                y[k] = x[k] - alpha * y_buf[bufsize-1-tau+ k]
 
 
+    filepath = "./audio.wav"
+    player = Player(filepath, effector=delay)
+    player.start()
+    # player.stop()
 
 
-import code
-console = code.InteractiveConsole(locals=locals())
-console.interact()
+    import code
+    console = code.InteractiveConsole(locals=locals())
+    console.interact()
