@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import threading
 from numba import jit
@@ -9,6 +10,18 @@ class Player(threading.Thread):
     def __init__(self, filepath, effector=None, blocksize=1024, n_ringbuf=20):
         super(Player, self).__init__()
         
+        self.blocksize  = blocksize
+        self.n_ringbuf = n_ringbuf
+        self.bufsize = self.blocksize*self.n_ringbuf
+
+        # エフェクト用の関数
+        self.effector = effector 
+
+        # ファイル読込
+        self.load(filepath)
+
+        
+    def load(self, filepath):
         # 音声ファイルを読み込み
         sig, sr = sf.read(filepath, always_2d=True)
         
@@ -16,19 +29,17 @@ class Player(threading.Thread):
         self.sr  = sr
         self.n_samples  = sig.shape[0]
         self.n_channels = sig.shape[1]
-        self.blocksize  = blocksize
-        
+
         self.x_tmp = np.zeros((self.blocksize, self.n_channels))
         self.y_tmp = np.zeros((self.blocksize, self.n_channels))
         
         # リングバッファ関連
-        self.n_ringbuf = n_ringbuf
-        self.bufsize = self.blocksize*self.n_ringbuf
         self.x_buf = np.zeros((self.bufsize, self.n_channels))
         self.y_buf = np.zeros((self.bufsize, self.n_channels))
         
-        # エフェクト用の関数
-        self.effector = effector
+        self.sig_save = np.zeros((self.n_samples + self.blocksize, self.n_channels))
+        self.savefilepath = os.path.splitext(filepath)[0] + "_out.wav"
+        
 
     def save_ringbuf(self):
         slc_dst = slice(0, self.blocksize*(self.n_ringbuf-1))
@@ -62,6 +73,8 @@ class Player(threading.Thread):
                 )
 
             outdata[0:chunksize, k] = self.y_tmp[0:chunksize,k]
+            
+        self.sig_save[self.current_frame:self.current_frame + chunksize] = outdata[0:chunksize]
         
         # リングバッファに現在のフレームの信号を保存
         self.save_ringbuf()
@@ -87,7 +100,9 @@ class Player(threading.Thread):
             finished_callback=self.event.set
         ):
             self.event.wait()
-
+    
+    def save(self):
+        sf.write(self.savefilepath, self.sig_save, self.sr)
 #=============================================================================
 
 # ここから実装
@@ -110,12 +125,13 @@ def delay(sr, blocksize, bufsize, x, y, x_buf, y_buf):
             y[k] = x[k] - alpha * y_buf[bufsize-1-tau+ k]
 
 
-# 使い方
 filepath = "./audio.wav"
 player = Player(filepath, effector=delay)
 player.start()
-
 # player.stop()
+
+
+
 
 import code
 console = code.InteractiveConsole(locals=locals())
