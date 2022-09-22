@@ -89,7 +89,7 @@ class Player(threading.Thread):
     
     def run(self):
         self.current_frame = 0
-        self.is_running = True
+        self.sig_save[:] *= 0.0
         self.event = threading.Event()
         
         with sd.Stream(
