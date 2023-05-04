@@ -7,12 +7,12 @@ import soundfile as sf
 
 
 class Player(threading.Thread):
-    def __init__(self, filepath, effector=None, blocksize=1024, n_ringbuf=20):
+    def __init__(self, filepath, effector=None, blocksize=1024, n_buf=10):
         super(Player, self).__init__()
         
         self.blocksize  = blocksize
-        self.n_ringbuf = n_ringbuf
-        self.bufsize = self.blocksize*self.n_ringbuf
+        self.n_buf = n_buf
+        self.bufsize = self.blocksize*self.n_buf
 
         # エフェクト用の関数
         self.effector = effector 
@@ -33,7 +33,7 @@ class Player(threading.Thread):
         self.x_tmp = np.zeros((self.blocksize, self.n_channels))
         self.y_tmp = np.zeros((self.blocksize, self.n_channels))
         
-        # リングバッファ関連
+        # バッファ関連
         self.x_buf = np.zeros((self.bufsize, self.n_channels))
         self.y_buf = np.zeros((self.bufsize, self.n_channels))
         
@@ -41,13 +41,13 @@ class Player(threading.Thread):
         self.savefilepath = os.path.splitext(filepath)[0] + "_out.wav"
         
 
-    def save_ringbuf(self):
-        slc_dst = slice(0, self.blocksize*(self.n_ringbuf-1))
-        slc_src = slice(self.blocksize, self.blocksize*self.n_ringbuf)
+    def save_buf(self):
+        slc_dst = slice(0, self.blocksize*(self.n_buf-1))
+        slc_src = slice(self.blocksize, self.blocksize*self.n_buf)
         self.x_buf[slc_dst, :] = self.x_buf[slc_src, :]
         self.y_buf[slc_dst, :] = self.y_buf[slc_src, :]
         
-        slc = slice(self.blocksize*(self.n_ringbuf-1), self.blocksize*self.n_ringbuf)
+        slc = slice(self.blocksize*(self.n_buf-1), self.blocksize*self.n_buf)
         self.x_buf[slc, :] = self.x_tmp[:, :]
         self.y_buf[slc, :] = self.y_tmp[:, :]
         
@@ -76,8 +76,8 @@ class Player(threading.Thread):
             
         self.sig_save[self.current_frame:self.current_frame + chunksize] = outdata[0:chunksize]
         
-        # リングバッファに現在のフレームの信号を保存
-        self.save_ringbuf()
+        # バッファに現在のフレームの信号を保存
+        self.save_buf()
         
         if chunksize < frames:
             raise sd.CallbackStop()
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     player = Player(filepath, effector=delay)
     player.start()
     # player.stop()
-
+    # player.save()
 
     import code
     console = code.InteractiveConsole(locals=locals())
